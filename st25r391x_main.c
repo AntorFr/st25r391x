@@ -414,9 +414,7 @@ static int st25r391x_open(struct inode *inode, struct file *file)
 	priv->read_buffer_tail = 0;
 	priv->mode = mode_idle;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 	return 0;
-#endif
 }
 
 static int st25r391x_release(struct inode *inode, struct file *file)
@@ -900,7 +898,9 @@ static int st25r391x_i2c_remove(struct i2c_client *client)
 	del_timer_sync(&priv->polling_timer);
 	cancel_work_sync(&priv->polling_work);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 	return 0;
+#endif
 }
 
 #ifdef CONFIG_OF
