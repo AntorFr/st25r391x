@@ -35,7 +35,8 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/circ_buf.h>
-#include <stdarg.h>
+#include <linux/stdarg.h>
+#include <linux/version.h>
 
 #include "st25r391x.h"
 
@@ -84,9 +85,17 @@ static unsigned int st25r391x_poll(struct file *file, poll_table *wait);
 static long st25r391x_unlocked_ioctl(struct file *file, unsigned int,
 				     unsigned long);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
+static int st25r391x_i2c_probe(struct i2c_client *i2c);
+#else
 static int st25r391x_i2c_probe(struct i2c_client *i2c,
 			       const struct i2c_device_id *id);
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static void st25r391x_i2c_remove(struct i2c_client *client);
+#else
 static int st25r391x_i2c_remove(struct i2c_client *client);
+#endif
 
 // ========================================================================== //
 // Polling code
@@ -405,7 +414,9 @@ static int st25r391x_open(struct inode *inode, struct file *file)
 	priv->read_buffer_tail = 0;
 	priv->mode = mode_idle;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)
 	return 0;
+#endif
 }
 
 static int st25r391x_release(struct inode *inode, struct file *file)
@@ -722,8 +733,12 @@ static struct file_operations st25r391x_fops = {
 // Probing, initialization and cleanup
 // ========================================================================== //
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
+static int st25r391x_i2c_probe(struct i2c_client *i2c)
+#else
 static int st25r391x_i2c_probe(struct i2c_client *i2c,
 			       const struct i2c_device_id *id)
+#endif
 {
 	struct device *dev = &i2c->dev;
 	struct st25r391x_i2c_data *priv;
@@ -815,7 +830,11 @@ static int st25r391x_i2c_probe(struct i2c_client *i2c,
 	}
 
 	// Create device class
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+	priv->st25r391x_class = class_create(DEVICE_NAME);
+#else
 	priv->st25r391x_class = class_create(THIS_MODULE, DEVICE_NAME);
+#endif
 	if (IS_ERR(priv->st25r391x_class)) {
 		err = PTR_ERR(priv->st25r391x_class);
 		dev_err(dev, "st25r391x_i2c_probe: class_create failed: %d",
@@ -856,7 +875,11 @@ static int st25r391x_i2c_probe(struct i2c_client *i2c,
 	return 0;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+static void st25r391x_i2c_remove(struct i2c_client *client)
+#else
 static int st25r391x_i2c_remove(struct i2c_client *client)
+#endif
 {
 	struct st25r391x_i2c_data *priv;
 	priv = i2c_get_clientdata(client);
